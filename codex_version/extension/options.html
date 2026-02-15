@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Filter Settings</title>
+    <link rel="stylesheet" href="options.css" />
+  </head>
+  <body>
+    <main class="wrap">
+      <h1>View-Based Filter</h1>
+      <p>Define your own rules. The extension will hide posts/profiles that match these keywords.</p>
+
+      <label class="row">
+        <span>Enable filter</span>
+        <input id="enabled" type="checkbox" />
+      </label>
+
+      <label>
+        <span>Blocked keywords (one per line)</span>
+        <textarea id="blockedKeywords" rows="10" placeholder="keyword or phrase"></textarea>
+      </label>
+
+      <label class="row">
+        <span>Use LangChain agent</span>
+        <input id="useAgent" type="checkbox" />
+      </label>
+
+      <label>
+        <span>Agent endpoint</span>
+        <input id="agentEndpoint" type="text" placeholder="http://127.0.0.1:8000/filter" />
+      </label>
+
+      <label>
+        <span>Model provider</span>
+        <select id="agentProvider">
+          <option value="openai">OpenAI</option>
+          <option value="gemini">Google Gemini</option>
+          <option value="groq">Groq</option>
+          <option value="ollama">Ollama (local)</option>
+        </select>
+      </label>
+
+      <label>
+        <span>Model name</span>
+        <input id="agentModel" type="text" placeholder="gpt-4.1-mini / gemini-2.5-flash / llama3.1:8b" />
+      </label>
+
+      <label>
+        <span>Provider base URL (optional; used for Ollama/custom)</span>
+        <input id="agentBaseUrl" type="text" placeholder="http://127.0.0.1:11434/v1" />
+      </label>
+
+      <label>
+        <span>Agent timeout (ms)</span>
+        <input id="agentTimeoutMs" type="number" min="500" step="100" />
+      </label>
+
+      <label>
+        <span>Agent system prompt</span>
+        <textarea
+          id="systemPrompt"
+          rows="5"
+          placeholder="How the agent should evaluate content"
+        ></textarea>
+      </label>
+
+      <label>
+        <span>Your preferences (one per line)</span>
+        <textarea id="userPreferences" rows="6" placeholder="Preference line"></textarea>
+      </label>
+
+      <label>
+        <span>Sites to run on (domain per line)</span>
+        <textarea id="siteAllowlist" rows="5" placeholder="example.com"></textarea>
+      </label>
+
+      <label>
+        <span>Hide mode</span>
+        <select id="hideMode">
+          <option value="collapse">Collapse content</option>
+          <option value="remove">Fully remove content</option>
+        </select>
+      </label>
+
+      <button id="saveBtn">Save</button>
+      <p id="status" role="status"></p>
+    </main>
+    <script src="options.js"></script>
+  </body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>View Filter</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 12px;
+        width: 260px;
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      }
+      .row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      button {
+        margin-top: 10px;
+        width: 100%;
+        padding: 8px;
+      }
+      small {
+        color: #575757;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="row">
+      <strong>Filter enabled</strong>
+      <input id="enabled" type="checkbox" />
+    </div>
+    <small>Configure keywords and sites in options.</small>
+    <button id="openOptions">Open Settings</button>
+    <script src="popup.js"></script>
+  </body>
+</html>

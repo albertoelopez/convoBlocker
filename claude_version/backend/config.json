@@ -1,0 +1,15 @@
+{
+  "enabled": true,
+  "gemini_api_key": "",
+  "ollama_endpoint": "http://localhost:11434",
+  "ollama_model": "llama3.1",
+  "ai_provider": "gemini",
+  "categories": {
+    "spam": true,
+    "trolls": true,
+    "off_topic": true,
+    "hate_speech": true,
+    "self_promo": true
+  },
+  "custom_prompt": ""
+}

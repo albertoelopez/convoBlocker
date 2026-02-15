@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>YT Live Chat Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <header class="header">
+      <div class="header-title">
+        <svg class="header-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <h1>YT Chat Blocker</h1>
+      </div>
+      <span id="status-badge" class="status-badge status-checking">Checking...</span>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs">
+      <button class="tab active" data-tab="categories">Categories</button>
+      <button class="tab" data-tab="settings">Settings</button>
+      <button class="tab" data-tab="blocklog">Block Log</button>
+    </nav>
+
+    <!-- Categories Tab -->
+    <section id="tab-categories" class="tab-content active">
+      <div class="section-label">Block messages that are:</div>
+      <div class="checkbox-group">
+        <label class="checkbox-item">
+          <input type="checkbox" id="cat-spam" checked>
+          <span class="checkmark"></span>
+          <span class="label-text">Spam</span>
+          <span class="label-desc">Repetitive, bot-like, or promotional</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="cat-trolls" checked>
+          <span class="checkmark"></span>
+          <span class="label-text">Trolling</span>
+          <span class="label-desc">Provocative or disruptive behavior</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="cat-off_topic">
+          <span class="checkmark"></span>
+          <span class="label-text">Off-Topic</span>
+          <span class="label-desc">Irrelevant to the stream</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="cat-hate_speech" checked>
+          <span class="checkmark"></span>
+          <span class="label-text">Hate Speech</span>
+          <span class="label-desc">Discriminatory or hateful content</span>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="cat-self_promo">
+          <span class="checkmark"></span>
+          <span class="label-text">Self-Promotion</span>
+          <span class="label-desc">Links, channel plugs, solicitation</span>
+        </label>
+      </div>
+
+      <div class="section-label" style="margin-top: 12px;">Custom prompt (optional)</div>
+      <textarea id="custom-prompt" placeholder="Add extra instructions for the AI, e.g. 'Also block anyone asking for mod status'" rows="3"></textarea>
+    </section>
+
+    <!-- Settings Tab -->
+    <section id="tab-settings" class="tab-content">
+      <div class="form-group">
+        <label class="form-label">AI Provider</label>
+        <select id="ai-provider">
+          <option value="gemini">Google Gemini</option>
+          <option value="ollama">Ollama (Local)</option>
+        </select>
+      </div>
+
+      <div id="gemini-settings">
+        <div class="form-group">
+          <label class="form-label">Gemini API Key</label>
+          <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key">
+        </div>
+      </div>
+
+      <div id="ollama-settings" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Ollama Endpoint</label>
+          <input type="text" id="ollama-endpoint" placeholder="http://localhost:11434" value="http://localhost:11434">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Ollama Model</label>
+          <input type="text" id="ollama-model" placeholder="llama3" value="llama3">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Backend URL</label>
+        <input type="text" id="backend-url" placeholder="http://localhost:8000" value="http://localhost:8000">
+      </div>
+
+      <button id="save-settings" class="btn btn-primary">Save Settings</button>
+      <div id="settings-status" class="settings-status"></div>
+    </section>
+
+    <!-- Block Log Tab -->
+    <section id="tab-blocklog" class="tab-content">
+      <div id="blocklog-empty" class="empty-state">No blocked users yet.</div>
+      <div id="blocklog-list" class="blocklog-list"></div>
+    </section>
+
+    <!-- Footer Stats -->
+    <footer class="footer">
+      <span id="stats-analyzed">0 analyzed</span>
+      <span class="footer-divider">|</span>
+      <span id="stats-blocked">0 blocked</span>
+    </footer>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>
