@@ -105,6 +105,9 @@ async function handleMessage(message) {
         method: "POST",
       });
 
+    case "GET_OLLAMA_MODELS":
+      return await fetchWithRetry(`${backendUrl}/ollama-models`);
+
     default:
       return { error: "Unknown message type" };
   }

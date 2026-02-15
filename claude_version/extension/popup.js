@@ -53,6 +53,10 @@
     });
   });
 
+  // Ollama model UI
+  const refreshOllamaBtn = document.getElementById("refresh-ollama-models");
+  const ollamaModelStatus = document.getElementById("ollama-model-status");
+
   // --- Provider toggle ---
   aiProvider.addEventListener("change", () => {
     if (aiProvider.value === "gemini") {
@@ -61,7 +65,81 @@
     } else {
       geminiSettings.style.display = "none";
       ollamaSettings.style.display = "block";
+      refreshOllamaModels();
     }
+  });
+
+  // --- Ollama model discovery ---
+  let _pendingOllamaModel = null; // model to select after list loads
+
+  function refreshOllamaModels() {
+    const previousValue = ollamaModel.value;
+    ollamaModelStatus.textContent = "Loading models...";
+    ollamaModelStatus.style.color = "#fff176";
+    refreshOllamaBtn.classList.add("spinning");
+
+    chrome.runtime.sendMessage({ type: "GET_OLLAMA_MODELS" }, (response) => {
+      refreshOllamaBtn.classList.remove("spinning");
+
+      if (chrome.runtime.lastError) {
+        ollamaModelStatus.textContent = "Backend unreachable";
+        ollamaModelStatus.style.color = "#ff8a80";
+        return;
+      }
+      if (!response || response.error) {
+        const detail = response && response.error ? response.error : "Unknown error";
+        ollamaModelStatus.textContent = detail;
+        ollamaModelStatus.style.color = "#ff8a80";
+        return;
+      }
+
+      const models = response.models || [];
+      // Clear existing options
+      ollamaModel.innerHTML = "";
+
+      if (models.length === 0) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.disabled = true;
+        opt.selected = true;
+        opt.textContent = "No models found — run: ollama pull llama3.2";
+        ollamaModel.appendChild(opt);
+        ollamaModelStatus.textContent = "No models installed";
+        ollamaModelStatus.style.color = "#ff8a80";
+        return;
+      }
+
+      models.forEach((m) => {
+        const opt = document.createElement("option");
+        opt.value = m.name;
+        const sizeStr = m.parameter_size ? ` (${m.parameter_size})` : m.size ? ` (${m.size})` : "";
+        opt.textContent = `${m.name}${sizeStr}`;
+        ollamaModel.appendChild(opt);
+      });
+
+      // Restore selection: prefer pending model, then previous value, then first
+      const toSelect = _pendingOllamaModel || previousValue;
+      _pendingOllamaModel = null;
+      if (toSelect) {
+        const exists = Array.from(ollamaModel.options).some((o) => o.value === toSelect);
+        if (exists) {
+          ollamaModel.value = toSelect;
+        }
+      }
+
+      ollamaModelStatus.textContent = `${models.length} model${models.length !== 1 ? "s" : ""} found`;
+      ollamaModelStatus.style.color = "#69f0ae";
+      setTimeout(() => { ollamaModelStatus.textContent = ""; }, 3000);
+    });
+  }
+
+  refreshOllamaBtn.addEventListener("click", refreshOllamaModels);
+
+  // Also refresh when endpoint field changes (debounced)
+  let endpointRefreshTimer = null;
+  ollamaEndpoint.addEventListener("input", () => {
+    if (endpointRefreshTimer) clearTimeout(endpointRefreshTimer);
+    endpointRefreshTimer = setTimeout(refreshOllamaModels, 1000);
   });
 
   // --- Auto-save categories on change ---
@@ -112,24 +190,66 @@
     promptSaveTimer = setTimeout(saveCategories, 800);
   });
 
+  // --- Show/hide API key toggle ---
+  const toggleGeminiKey = document.getElementById("toggle-gemini-key");
+  if (toggleGeminiKey) {
+    toggleGeminiKey.addEventListener("click", () => {
+      const isPassword = geminiApiKey.type === "password";
+      geminiApiKey.type = isPassword ? "text" : "password";
+      toggleGeminiKey.title = isPassword ? "Hide key" : "Show key";
+    });
+  }
+
+  // --- Open Gemini link in new tab ---
+  const geminiLink = document.getElementById("gemini-link");
+  if (geminiLink) {
+    geminiLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: "https://aistudio.google.com/apikey" });
+    });
+  }
+
   // --- Save settings button ---
   saveSettingsBtn.addEventListener("click", async () => {
-    const settings = {
-      ai_provider: aiProvider.value,
-      gemini_api_key: geminiApiKey.value.trim(),
-      ollama_endpoint: ollamaEndpoint.value.trim(),
-      ollama_model: ollamaModel.value.trim(),
-      backendUrl: backendUrl.value.trim(),
-    };
+    const localBackendUrl = backendUrl.value.trim();
 
-    // Save to local storage
-    chrome.storage.local.set({ settings });
+    // Save backendUrl only to local storage (not a backend field)
+    chrome.storage.local.set({
+      settings: {
+        ai_provider: aiProvider.value,
+        gemini_api_key: geminiApiKey.value.trim(),
+        ollama_endpoint: ollamaEndpoint.value.trim(),
+        ollama_model: ollamaModel.value.trim(),
+        backendUrl: localBackendUrl,
+      },
+    });
 
-    // Send to backend
+    // Fetch current backend settings, merge in AI fields, then POST
     try {
+      const current = await new Promise((resolve, reject) => {
+        chrome.runtime.sendMessage({ type: "GET_SETTINGS" }, (response) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else if (response && response.error) {
+            reject(new Error(response.error));
+          } else {
+            resolve(response || {});
+          }
+        });
+      });
+
+      const merged = Object.assign({}, current, {
+        ai_provider: aiProvider.value,
+        gemini_api_key: geminiApiKey.value.trim(),
+        ollama_endpoint: ollamaEndpoint.value.trim(),
+        ollama_model: ollamaModel.value.trim(),
+      });
+      // Remove backendUrl if it leaked in — not a backend field
+      delete merged.backendUrl;
+
       await new Promise((resolve, reject) => {
         chrome.runtime.sendMessage(
-          { type: "SAVE_SETTINGS", settings },
+          { type: "SAVE_SETTINGS", settings: merged },
           (response) => {
             if (chrome.runtime.lastError) {
               reject(new Error(chrome.runtime.lastError.message));
@@ -190,7 +310,7 @@
           ollamaEndpoint.value = result.settings.ollama_endpoint;
         }
         if (result.settings.ollama_model) {
-          ollamaModel.value = result.settings.ollama_model;
+          _pendingOllamaModel = result.settings.ollama_model;
         }
         if (result.settings.backendUrl) {
           backendUrl.value = result.settings.backendUrl;
@@ -304,7 +424,12 @@
   }
 
   // --- Init ---
-  loadSavedState();
+  loadSavedState().then(() => {
+    // If Ollama is selected, fetch models after state is loaded
+    if (aiProvider.value === "ollama") {
+      refreshOllamaModels();
+    }
+  });
   checkHealth();
   loadStats();
 })();

@@ -79,7 +79,16 @@
       <div id="gemini-settings">
         <div class="form-group">
           <label class="form-label">Gemini API Key</label>
-          <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key">
+          <div class="input-with-toggle">
+            <input type="password" id="gemini-api-key" placeholder="Enter your Gemini API key">
+            <button type="button" id="toggle-gemini-key" class="btn-toggle-vis" title="Show/hide key">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="form-hint">Get a key at <a href="#" id="gemini-link">ai.google.dev</a></div>
         </div>
       </div>
 
@@ -90,7 +99,19 @@
         </div>
         <div class="form-group">
           <label class="form-label">Ollama Model</label>
-          <input type="text" id="ollama-model" placeholder="llama3" value="llama3">
+          <div class="select-with-refresh">
+            <select id="ollama-model">
+              <option value="" disabled selected>Select a model...</option>
+            </select>
+            <button type="button" id="refresh-ollama-models" class="btn-refresh" title="Refresh models from Ollama">
+              <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5">
+                <path d="M23 4v6h-6"/>
+                <path d="M1 20v-6h6"/>
+                <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+              </svg>
+            </button>
+          </div>
+          <div id="ollama-model-status" class="form-hint"></div>
         </div>
       </div>
 

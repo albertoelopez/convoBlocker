@@ -15,7 +15,11 @@ const DEFAULT_SETTINGS = {
   useAgent: true,
   agentProvider: "openai",
   agentModel: "gpt-4.1-mini",
-  agentBaseUrl: ""
+  agentBaseUrl: "",
+  openaiApiKey: "",
+  geminiApiKey: "",
+  groqApiKey: "",
+  ollamaApiKey: ""
 };
 
 chrome.runtime.onInstalled.addListener(async () => {

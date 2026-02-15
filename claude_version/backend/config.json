@@ -7,9 +7,9 @@
   "categories": {
     "spam": true,
     "trolls": true,
-    "off_topic": true,
+    "off_topic": false,
     "hate_speech": true,
-    "self_promo": true
+    "self_promo": false
   },
   "custom_prompt": ""
 }

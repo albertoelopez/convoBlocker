@@ -64,7 +64,13 @@ async function runAgentDecision(settings, text) {
     preferences: settings.userPreferences || [],
     provider: settings.agentProvider || "openai",
     provider_model: settings.agentModel || "gpt-4.1-mini",
-    provider_base_url: settings.agentBaseUrl || ""
+    provider_base_url: settings.agentBaseUrl || "",
+    api_keys: {
+      openai: settings.openaiApiKey || "",
+      gemini: settings.geminiApiKey || "",
+      groq: settings.groqApiKey || "",
+      ollama: settings.ollamaApiKey || ""
+    }
   };
 
   const response = await chrome.runtime.sendMessage({

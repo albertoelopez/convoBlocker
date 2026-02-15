@@ -10,7 +10,11 @@ const defaults = {
   useAgent: true,
   agentProvider: "openai",
   agentModel: "gpt-4.1-mini",
-  agentBaseUrl: ""
+  agentBaseUrl: "",
+  openaiApiKey: "",
+  geminiApiKey: "",
+  groqApiKey: "",
+  ollamaApiKey: ""
 };
 
 function toLines(arr = []) {
@@ -24,6 +28,33 @@ function fromLines(text = "") {
     .filter(Boolean);
 }
 
+const providerDefaults = {
+  openai: { model: "gpt-4.1-mini", baseUrl: "" },
+  gemini: { model: "gemini-2.5-flash", baseUrl: "" },
+  groq: { model: "llama-3.3-70b-versatile", baseUrl: "" },
+  ollama: { model: "llama3.1:8b", baseUrl: "http://127.0.0.1:11434/v1" }
+};
+
+function applyProviderDefaults() {
+  const provider = document.getElementById("agentProvider").value;
+  const defaults = providerDefaults[provider];
+  if (!defaults) return;
+
+  const modelInput = document.getElementById("agentModel");
+  const baseUrlInput = document.getElementById("agentBaseUrl");
+  const ollamaKeyInput = document.getElementById("ollamaApiKey");
+
+  if (!modelInput.value.trim()) {
+    modelInput.value = defaults.model;
+  }
+  if (!baseUrlInput.value.trim()) {
+    baseUrlInput.value = defaults.baseUrl;
+  }
+  if (provider === "ollama" && !ollamaKeyInput.value.trim()) {
+    ollamaKeyInput.value = "ollama";
+  }
+}
+
 async function loadSettings() {
   const { filterSettings } = await chrome.storage.sync.get("filterSettings");
   const settings = { ...defaults, ...(filterSettings || {}) };
@@ -35,6 +66,10 @@ async function loadSettings() {
   document.getElementById("agentProvider").value = settings.agentProvider;
   document.getElementById("agentModel").value = settings.agentModel;
   document.getElementById("agentBaseUrl").value = settings.agentBaseUrl;
+  document.getElementById("openaiApiKey").value = settings.openaiApiKey;
+  document.getElementById("geminiApiKey").value = settings.geminiApiKey;
+  document.getElementById("groqApiKey").value = settings.groqApiKey;
+  document.getElementById("ollamaApiKey").value = settings.ollamaApiKey;
   document.getElementById("agentTimeoutMs").value = settings.agentTimeoutMs;
   document.getElementById("systemPrompt").value = settings.systemPrompt;
   document.getElementById("userPreferences").value = toLines(settings.userPreferences);
@@ -51,6 +86,10 @@ async function saveSettings() {
     agentProvider: document.getElementById("agentProvider").value,
     agentModel: document.getElementById("agentModel").value.trim(),
     agentBaseUrl: document.getElementById("agentBaseUrl").value.trim(),
+    openaiApiKey: document.getElementById("openaiApiKey").value.trim(),
+    geminiApiKey: document.getElementById("geminiApiKey").value.trim(),
+    groqApiKey: document.getElementById("groqApiKey").value.trim(),
+    ollamaApiKey: document.getElementById("ollamaApiKey").value.trim(),
     agentTimeoutMs: Number(document.getElementById("agentTimeoutMs").value) || 3500,
     systemPrompt: document.getElementById("systemPrompt").value.trim(),
     userPreferences: fromLines(document.getElementById("userPreferences").value),
@@ -67,4 +106,5 @@ async function saveSettings() {
 }
 
 document.getElementById("saveBtn").addEventListener("click", saveSettings);
+document.getElementById("agentProvider").addEventListener("change", applyProviderDefaults);
 loadSettings();

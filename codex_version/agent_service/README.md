@@ -26,6 +26,7 @@ Send these fields in `POST /filter`:
 - `provider`: `openai` | `gemini` | `groq` | `ollama`
 - `provider_model`: model id
 - `provider_base_url`: optional (used for Ollama/custom base URL)
+- `api_keys`: optional object with `openai`, `gemini`, `groq`, `ollama`
 
 Expected keys by provider:
 - `openai`: `OPENAI_API_KEY`
@@ -41,9 +42,10 @@ Expected keys by provider:
   - `page_title`: current page title
   - `system_prompt`: your high-level policy
   - `preferences`: list of user preference lines
-  - `provider`: model provider
-  - `provider_model`: model name/id
-  - `provider_base_url`: optional base URL
+- `provider`: model provider
+- `provider_model`: model name/id
+- `provider_base_url`: optional base URL
+- `api_keys`: optional key map from extension settings
 
 Response:
 - `hide`: boolean

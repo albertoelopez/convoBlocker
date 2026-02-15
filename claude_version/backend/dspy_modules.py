@@ -90,24 +90,39 @@ class DecisionMaker(dspy.Module):
         )
 
 
-def configure_dspy(settings: dict) -> None:
-    """Configure the DSPy language model based on application settings.
+_current_lm = None
 
-    Args:
-        settings: Dict with keys:
-            - gemini_api_key (str, optional): Google Gemini API key for primary LM.
-            - gemini_model (str, optional): Gemini model name. Default "gemini/gemini-2.0-flash".
-            - ollama_model (str, optional): Ollama model for fallback. Default "ollama_chat/llama3.2".
-            - ollama_base_url (str, optional): Ollama server URL. Default "http://localhost:11434".
-    """
+
+def _build_lm(settings: dict):
+    """Build a DSPy LM instance from settings."""
     gemini_key = settings.get("gemini_api_key")
     gemini_model = settings.get("gemini_model", "gemini/gemini-2.0-flash")
     ollama_model = settings.get("ollama_model", "ollama_chat/llama3.2")
     ollama_base_url = settings.get("ollama_base_url", "http://localhost:11434")
 
     if gemini_key:
-        lm = dspy.LM(gemini_model, api_key=gemini_key)
+        return dspy.LM(gemini_model, api_key=gemini_key)
     else:
-        lm = dspy.LM(ollama_model, api_base=ollama_base_url)
+        return dspy.LM(ollama_model, api_base=ollama_base_url)
 
-    dspy.configure(lm=lm)
+
+def configure_dspy(settings: dict) -> None:
+    """Configure the DSPy language model based on application settings.
+
+    Stores the LM globally and calls dspy.configure. If dspy.configure fails
+    due to async context issues, the LM is still stored and can be used via
+    dspy.context() in tool functions.
+    """
+    global _current_lm
+    _current_lm = _build_lm(settings)
+    try:
+        dspy.configure(lm=_current_lm)
+    except Exception:
+        # Async context mismatch — the LM is stored in _current_lm
+        # and DSPy tools can use dspy.context(lm=_current_lm) as needed
+        pass
+
+
+def get_dspy_lm():
+    """Return the currently configured DSPy LM."""
+    return _current_lm

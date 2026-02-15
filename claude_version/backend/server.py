@@ -5,6 +5,7 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -189,6 +190,34 @@ async def health_check():
     """Check backend health and agent status."""
     agent_status = "ready" if _agent else "not_configured"
     return HealthResponse(status="ok", agent=agent_status)
+
+
+@app.get("/ollama-models")
+async def list_ollama_models():
+    """Fetch locally installed Ollama models by querying the Ollama API."""
+    endpoint = _settings.ollama_endpoint if _settings else "http://localhost:11434"
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(f"{endpoint}/api/tags")
+            resp.raise_for_status()
+            data = resp.json()
+            models = []
+            for m in data.get("models", []):
+                name = m.get("name", "")
+                size_bytes = m.get("size", 0)
+                size_gb = round(size_bytes / (1024 ** 3), 1) if size_bytes else None
+                models.append({
+                    "name": name,
+                    "size": f"{size_gb}GB" if size_gb else None,
+                    "modified_at": m.get("modified_at", ""),
+                    "family": m.get("details", {}).get("family", ""),
+                    "parameter_size": m.get("details", {}).get("parameter_size", ""),
+                })
+            return {"models": models, "endpoint": endpoint}
+    except httpx.ConnectError:
+        raise HTTPException(status_code=503, detail=f"Cannot connect to Ollama at {endpoint}. Is it running?")
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Ollama API error: {e}")
 
 
 @app.get("/stats", response_model=StatsResponse)

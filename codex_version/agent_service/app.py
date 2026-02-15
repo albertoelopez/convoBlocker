@@ -37,6 +37,7 @@ class FilterRequest(BaseModel):
     provider: Literal["openai", "gemini", "groq", "ollama"] = "openai"
     provider_model: str = ""
     provider_base_url: str = ""
+    api_keys: dict[str, str] = Field(default_factory=dict)
 
 
 class FilterResponse(BaseModel):
@@ -54,13 +55,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-
-def _require_env(name: str, message: str) -> str:
-    value = os.getenv(name, "").strip()
-    if not value:
-        raise RuntimeError(message)
-    return value
 
 
 def _build_deep_agent():
@@ -103,27 +97,44 @@ def _build_dspy_predictor():
     return dspy.Predict(FilterSignature)
 
 
-def _build_dspy_lm(provider: str, provider_model: str, provider_base_url: str):
+def _key_from_request_or_env(api_keys: dict[str, str], request_key: str, *env_names: str) -> str:
+    request_value = api_keys.get(request_key, "").strip()
+    if request_value:
+        return request_value
+    for env_name in env_names:
+        env_value = os.getenv(env_name, "").strip()
+        if env_value:
+            return env_value
+    return ""
+
+
+def _build_dspy_lm(
+    provider: str, provider_model: str, provider_base_url: str, api_keys: dict[str, str]
+):
     if dspy is None:
         raise RuntimeError("dspy is required for FILTER_RUNTIME=dspy")
 
     if provider == "openai":
-        api_key = _require_env("OPENAI_API_KEY", "OPENAI_API_KEY must be set for provider=openai")
+        api_key = _key_from_request_or_env(api_keys, "openai", "OPENAI_API_KEY")
+        if not api_key:
+            raise RuntimeError("Provide openai API key in settings or set OPENAI_API_KEY")
         return dspy.LM(f"openai/{provider_model}", api_key=api_key)
 
     if provider == "gemini":
-        api_key = (os.getenv("GEMINI_API_KEY", "") or os.getenv("GOOGLE_API_KEY", "")).strip()
+        api_key = _key_from_request_or_env(api_keys, "gemini", "GEMINI_API_KEY", "GOOGLE_API_KEY")
         if not api_key:
-            raise RuntimeError("Set GEMINI_API_KEY (or GOOGLE_API_KEY) for provider=gemini")
+            raise RuntimeError("Provide gemini API key in settings or set GEMINI_API_KEY/GOOGLE_API_KEY")
         return dspy.LM(f"gemini/{provider_model}", api_key=api_key)
 
     if provider == "groq":
-        api_key = _require_env("GROQ_API_KEY", "GROQ_API_KEY must be set for provider=groq")
+        api_key = _key_from_request_or_env(api_keys, "groq", "GROQ_API_KEY")
+        if not api_key:
+            raise RuntimeError("Provide groq API key in settings or set GROQ_API_KEY")
         return dspy.LM(f"groq/{provider_model}", api_key=api_key)
 
     if provider == "ollama":
         base_url = provider_base_url.strip() or os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434/v1")
-        api_key = os.getenv("OLLAMA_API_KEY", "ollama")
+        api_key = _key_from_request_or_env(api_keys, "ollama", "OLLAMA_API_KEY") or "ollama"
         return dspy.LM(f"openai/{provider_model}", api_base=base_url, api_key=api_key)
 
     raise RuntimeError("Unsupported provider. Use one of: openai, gemini, groq, ollama")
@@ -207,7 +218,7 @@ async def filter_content(req: FilterRequest):
             raise HTTPException(status_code=400, detail="provider_model is required")
 
         try:
-            lm = _build_dspy_lm(provider, model, req.provider_base_url)
+            lm = _build_dspy_lm(provider, model, req.provider_base_url, req.api_keys)
         except RuntimeError as exc:
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 

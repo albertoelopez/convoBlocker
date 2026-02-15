@@ -24,6 +24,7 @@ This extension hides social content based on your own rules and can call a local
    - Choose provider: OpenAI / Gemini / Groq / Ollama
    - Set the model name for that provider
    - (Optional) set provider base URL (for Ollama/custom)
+   - (Optional) paste provider API key(s) in settings
    - Add your `Agent system prompt`
    - Add `Your preferences` lines
 3. Refresh target tabs after saving settings.
@@ -31,3 +32,4 @@ This extension hides social content based on your own rules and can call a local
 ## Notes
 - Keyword filtering remains as a local fallback when the agent is unavailable.
 - Keep your policy clear and specific for better filtering consistency.
+- API keys entered in options are stored by the extension in Chrome storage.

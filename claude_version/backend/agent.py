@@ -88,12 +88,14 @@ def _get_model(settings: Settings):
 
     if settings.ai_provider == "gemini" and settings.gemini_api_key:
         return init_chat_model(
-            "google_genai/gemini-2.0-flash",
+            "gemini-2.0-flash",
+            model_provider="google_genai",
             api_key=settings.gemini_api_key,
         )
     else:
         return init_chat_model(
-            f"ollama/{settings.ollama_model}",
+            settings.ollama_model,
+            model_provider="ollama",
             base_url=settings.ollama_endpoint,
         )
 
@@ -105,9 +107,8 @@ def create_moderation_agent(settings: Settings):
     Returns None if no AI provider is configured.
     """
     if settings.ai_provider == "gemini" and not settings.gemini_api_key:
-        if settings.ai_provider == "gemini":
-            logger.warning("Gemini selected but no API key configured")
-            return None
+        logger.warning("Gemini selected but no API key configured")
+        return None
 
     system_prompt = _build_system_prompt(settings)
     tools = [classify_message, detect_patterns, get_user_history, make_decision]

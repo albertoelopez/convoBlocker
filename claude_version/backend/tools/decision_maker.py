@@ -1,10 +1,12 @@
 """Decision-making tool using DSPy chain-of-thought reasoning."""
 
 import json
+from contextlib import nullcontext
 
+import dspy
 from langchain_core.tools import tool
 
-from ..dspy_modules import DecisionMaker
+from dspy_modules import DecisionMaker, get_dspy_lm
 
 
 @tool
@@ -34,14 +36,17 @@ def make_decision(
     """
     maker = DecisionMaker()
 
-    result = maker(
-        username=username,
-        message_analysis=message_analysis,
-        sentiment=sentiment,
-        pattern_flags=pattern_flags,
-        user_history=user_history,
-        custom_instructions=custom_instructions or "No custom instructions provided.",
-    )
+    lm = get_dspy_lm()
+    ctx = dspy.context(lm=lm) if lm else nullcontext()
+    with ctx:
+        result = maker(
+            username=username,
+            message_analysis=message_analysis,
+            sentiment=sentiment,
+            pattern_flags=pattern_flags,
+            user_history=user_history,
+            custom_instructions=custom_instructions or "No custom instructions provided.",
+        )
 
     decision = result.decision
     if isinstance(decision, str):

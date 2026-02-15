@@ -1,10 +1,12 @@
 """Message classification tool using DSPy modules."""
 
 import json
+from contextlib import nullcontext
 
+import dspy
 from langchain_core.tools import tool
 
-from ..dspy_modules import MessageClassifier, SentimentScorer
+from dspy_modules import MessageClassifier, SentimentScorer, get_dspy_lm
 
 
 @tool
@@ -25,8 +27,11 @@ def classify_message(message: str, criteria: str, username: str = "unknown") -> 
     classifier = MessageClassifier()
     scorer = SentimentScorer()
 
-    classification = classifier(message=message, username=username, criteria=criteria)
-    sentiment = scorer(message=message)
+    lm = get_dspy_lm()
+    ctx = dspy.context(lm=lm) if lm else nullcontext()
+    with ctx:
+        classification = classifier(message=message, username=username, criteria=criteria)
+        sentiment = scorer(message=message)
 
     # Parse categories_violated from DSPy output
     categories = classification.categories_violated
