@@ -53,6 +53,7 @@ async def lifespan(app: FastAPI):
     try:
         configure_dspy({
             "gemini_api_key": _settings.gemini_api_key,
+            "groq_api_key": _settings.groq_api_key,
             "ollama_model": f"ollama_chat/{_settings.ollama_model}",
             "ollama_base_url": _settings.ollama_endpoint,
         })
@@ -278,6 +279,7 @@ async def update_settings(new_settings: SettingsModel):
         old_settings is None
         or old_settings.ai_provider != _settings.ai_provider
         or old_settings.gemini_api_key != _settings.gemini_api_key
+        or old_settings.groq_api_key != _settings.groq_api_key
         or old_settings.ollama_endpoint != _settings.ollama_endpoint
         or old_settings.ollama_model != _settings.ollama_model
         or old_settings.categories != _settings.categories
@@ -288,6 +290,7 @@ async def update_settings(new_settings: SettingsModel):
         try:
             configure_dspy({
                 "gemini_api_key": _settings.gemini_api_key,
+                "groq_api_key": _settings.groq_api_key,
                 "ollama_model": f"ollama_chat/{_settings.ollama_model}",
                 "ollama_base_url": _settings.ollama_endpoint,
             })

@@ -3,6 +3,7 @@ uvicorn[standard]
 deepagents
 dspy
 langchain-google-genai
+langchain-groq
 langchain-ollama
 pydantic
 aiosqlite

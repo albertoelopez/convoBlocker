@@ -96,12 +96,15 @@ _current_lm = None
 def _build_lm(settings: dict):
     """Build a DSPy LM instance from settings."""
     gemini_key = settings.get("gemini_api_key")
+    groq_key = settings.get("groq_api_key")
     gemini_model = settings.get("gemini_model", "gemini/gemini-2.0-flash")
     ollama_model = settings.get("ollama_model", "ollama_chat/llama3.2")
     ollama_base_url = settings.get("ollama_base_url", "http://localhost:11434")
 
     if gemini_key:
         return dspy.LM(gemini_model, api_key=gemini_key)
+    elif groq_key:
+        return dspy.LM("groq/llama-3.3-70b-versatile", api_key=groq_key)
     else:
         return dspy.LM(ollama_model, api_base=ollama_base_url)
 

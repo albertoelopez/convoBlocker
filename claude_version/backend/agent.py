@@ -92,6 +92,12 @@ def _get_model(settings: Settings):
             model_provider="google_genai",
             api_key=settings.gemini_api_key,
         )
+    elif settings.ai_provider == "groq" and settings.groq_api_key:
+        return init_chat_model(
+            "llama-3.3-70b-versatile",
+            model_provider="groq",
+            api_key=settings.groq_api_key,
+        )
     else:
         return init_chat_model(
             settings.ollama_model,
@@ -108,6 +114,9 @@ def create_moderation_agent(settings: Settings):
     """
     if settings.ai_provider == "gemini" and not settings.gemini_api_key:
         logger.warning("Gemini selected but no API key configured")
+        return None
+    if settings.ai_provider == "groq" and not settings.groq_api_key:
+        logger.warning("Groq selected but no API key configured")
         return None
 
     system_prompt = _build_system_prompt(settings)

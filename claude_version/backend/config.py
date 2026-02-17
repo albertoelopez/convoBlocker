@@ -10,6 +10,7 @@ _CONFIG_PATH = _CONFIG_DIR / "config.json"
 class Settings(BaseModel):
     enabled: bool = True
     gemini_api_key: str = ""
+    groq_api_key: str = ""
     ollama_endpoint: str = "http://localhost:11434"
     ollama_model: str = "llama3.1"
     ai_provider: str = "gemini"

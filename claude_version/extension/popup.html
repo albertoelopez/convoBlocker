@@ -72,6 +72,7 @@
         <label class="form-label">AI Provider</label>
         <select id="ai-provider">
           <option value="gemini">Google Gemini</option>
+          <option value="groq">Groq</option>
           <option value="ollama">Ollama (Local)</option>
         </select>
       </div>
@@ -89,6 +90,22 @@
             </button>
           </div>
           <div class="form-hint">Get a key at <a href="#" id="gemini-link">ai.google.dev</a></div>
+        </div>
+      </div>
+
+      <div id="groq-settings" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Groq API Key</label>
+          <div class="input-with-toggle">
+            <input type="password" id="groq-api-key" placeholder="Enter your Groq API key">
+            <button type="button" id="toggle-groq-key" class="btn-toggle-vis" title="Show/hide key">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </button>
+          </div>
+          <div class="form-hint">Get a key at <a href="#" id="groq-link">console.groq.com</a></div>
         </div>
       </div>
 

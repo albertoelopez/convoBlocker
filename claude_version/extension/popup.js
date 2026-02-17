@@ -20,8 +20,10 @@
   // Settings
   const aiProvider = document.getElementById("ai-provider");
   const geminiSettings = document.getElementById("gemini-settings");
+  const groqSettings = document.getElementById("groq-settings");
   const ollamaSettings = document.getElementById("ollama-settings");
   const geminiApiKey = document.getElementById("gemini-api-key");
+  const groqApiKey = document.getElementById("groq-api-key");
   const ollamaEndpoint = document.getElementById("ollama-endpoint");
   const ollamaModel = document.getElementById("ollama-model");
   const backendUrl = document.getElementById("backend-url");
@@ -59,11 +61,15 @@
 
   // --- Provider toggle ---
   aiProvider.addEventListener("change", () => {
+    geminiSettings.style.display = "none";
+    groqSettings.style.display = "none";
+    ollamaSettings.style.display = "none";
+
     if (aiProvider.value === "gemini") {
       geminiSettings.style.display = "block";
-      ollamaSettings.style.display = "none";
+    } else if (aiProvider.value === "groq") {
+      groqSettings.style.display = "block";
     } else {
-      geminiSettings.style.display = "none";
       ollamaSettings.style.display = "block";
       refreshOllamaModels();
     }
@@ -190,7 +196,7 @@
     promptSaveTimer = setTimeout(saveCategories, 800);
   });
 
-  // --- Show/hide API key toggle ---
+  // --- Show/hide API key toggles ---
   const toggleGeminiKey = document.getElementById("toggle-gemini-key");
   if (toggleGeminiKey) {
     toggleGeminiKey.addEventListener("click", () => {
@@ -200,12 +206,29 @@
     });
   }
 
-  // --- Open Gemini link in new tab ---
+  const toggleGroqKey = document.getElementById("toggle-groq-key");
+  if (toggleGroqKey) {
+    toggleGroqKey.addEventListener("click", () => {
+      const isPassword = groqApiKey.type === "password";
+      groqApiKey.type = isPassword ? "text" : "password";
+      toggleGroqKey.title = isPassword ? "Hide key" : "Show key";
+    });
+  }
+
+  // --- Open provider links in new tab ---
   const geminiLink = document.getElementById("gemini-link");
   if (geminiLink) {
     geminiLink.addEventListener("click", (e) => {
       e.preventDefault();
       chrome.tabs.create({ url: "https://aistudio.google.com/apikey" });
+    });
+  }
+
+  const groqLink = document.getElementById("groq-link");
+  if (groqLink) {
+    groqLink.addEventListener("click", (e) => {
+      e.preventDefault();
+      chrome.tabs.create({ url: "https://console.groq.com/keys" });
     });
   }
 
@@ -218,6 +241,7 @@
       settings: {
         ai_provider: aiProvider.value,
         gemini_api_key: geminiApiKey.value.trim(),
+        groq_api_key: groqApiKey.value.trim(),
         ollama_endpoint: ollamaEndpoint.value.trim(),
         ollama_model: ollamaModel.value.trim(),
         backendUrl: localBackendUrl,
@@ -241,6 +265,7 @@
       const merged = Object.assign({}, current, {
         ai_provider: aiProvider.value,
         gemini_api_key: geminiApiKey.value.trim(),
+        groq_api_key: groqApiKey.value.trim(),
         ollama_endpoint: ollamaEndpoint.value.trim(),
         ollama_model: ollamaModel.value.trim(),
       });
@@ -305,6 +330,9 @@
         }
         if (result.settings.gemini_api_key) {
           geminiApiKey.value = result.settings.gemini_api_key;
+        }
+        if (result.settings.groq_api_key) {
+          groqApiKey.value = result.settings.groq_api_key;
         }
         if (result.settings.ollama_endpoint) {
           ollamaEndpoint.value = result.settings.ollama_endpoint;
