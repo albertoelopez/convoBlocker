@@ -1,12 +1,15 @@
 """Decision-making tool using DSPy chain-of-thought reasoning."""
 
 import json
+import logging
 from contextlib import nullcontext
 
 import dspy
 from langchain_core.tools import tool
 
 from dspy_modules import DecisionMaker, get_dspy_lm
+
+logger = logging.getLogger(__name__)
 
 
 @tool
@@ -37,6 +40,8 @@ def make_decision(
     maker = DecisionMaker()
 
     lm = get_dspy_lm()
+    if not lm:
+        logger.warning("DSPy LM is None — make_decision will use default context for '%s'", username)
     ctx = dspy.context(lm=lm) if lm else nullcontext()
     with ctx:
         result = maker(

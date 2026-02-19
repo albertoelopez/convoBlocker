@@ -30,20 +30,30 @@ ACTIVE MODERATION CATEGORIES: {categories_str}
 {custom_section}
 WORKFLOW for each message in the batch:
 1. Run detect_patterns first — it's fast and free (no LLM cost).
-2. If patterns are suspicious (has_urls, excessive_caps, repeated_chars, excessive_emojis, too_long)
-   OR the message seems potentially problematic:
-   → Run classify_message with criteria="{categories_str}" and check_user_history.
-3. If the classification shows severity "medium" or "high", or categories are violated:
-   → Run make_decision for the final verdict.
-4. If the message is short, normal, and patterns are clean:
-   → Allow it without further analysis.
+2. Run classify_message with criteria="{categories_str}" and get_user_history for every message
+   UNLESS it is obviously clean (e.g. "hi", "lol", "gg", short greetings with no flags).
+3. Run make_decision for any message where:
+   - classify_message returned severity "medium" or "high", OR
+   - any categories were violated, OR
+   - detect_patterns flagged something suspicious.
+4. Only skip make_decision for messages that are clearly clean after steps 1-2.
 
-IMPORTANT RULES:
-- Always err on the side of ALLOWING when uncertain.
-- Only block users who clearly violate the active categories.
+DECISION FRAMEWORK — three tiers:
+- BLOCK: Clear violations — spam links, hate speech, harassment, slurs, repeated offenses,
+  or any message with severity "high" or multiple categories violated. Block on first offense
+  for obvious violations; no second chances needed for hate speech or spam URLs.
+- WATCH: Genuinely ambiguous — the message could be interpreted either way, or it's a first
+  minor offense with low severity. Use this when you are truly uncertain.
+- ALLOW: Clean messages, normal chat, friendly banter, constructive comments.
+
+RULES:
 - Short friendly messages like "hi", "lol", "gg" should always be allowed.
-- A single borderline message should result in "watch", not "block".
-- Consider user history: repeat offenders deserve stricter treatment.
+- Consider user history: repeat offenders (prior flags or watch decisions) should be treated
+  more strictly. A "watch" user who offends again should escalate to "block".
+- For messages with severity "high" or multiple categories violated, make_decision should
+  return "block".
+- When in doubt between "block" and "allow", use "watch" — but do NOT use "watch" as a way
+  to avoid blocking obvious violations.
 
 OUTPUT FORMAT:
 Return a JSON array. Each element must have exactly these keys:
@@ -173,6 +183,7 @@ async def run_agent(agent, messages: list[dict]) -> list[dict]:
 
         # Extract the text content from the agent's response
         response_text = _extract_response_text(result)
+        logger.info("Agent response (%d chars): %.500s", len(response_text), response_text)
         decisions = _parse_decisions(response_text, messages)
         return decisions
 
@@ -202,6 +213,7 @@ def _extract_response_text(result) -> str:
             return result["output"]
     if isinstance(result, str):
         return result
+    logger.warning("Unexpected response format (type=%s), using str()", type(result).__name__)
     return str(result)
 
 
@@ -218,14 +230,17 @@ def _parse_decisions(text: str, messages: list[dict]) -> list[dict]:
                 valid = []
                 for d in decisions:
                     if isinstance(d, dict) and "username" in d:
+                        decision = d.get("decision", "allow")
+                        if "decision" not in d:
+                            logger.warning("Decision key missing for user %s, defaulting to allow", d.get("username"))
                         valid.append({
                             "username": d.get("username", ""),
-                            "decision": d.get("decision", "allow"),
+                            "decision": decision,
                             "reason": d.get("reason", ""),
                         })
                 return valid
-        except json.JSONDecodeError:
-            pass
+        except json.JSONDecodeError as e:
+            logger.warning("JSON parse error in agent response: %s", e)
 
     logger.warning("Could not parse agent decisions, defaulting to allow")
     return [

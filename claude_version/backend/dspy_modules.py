@@ -1,6 +1,10 @@
 """DSPy modules for YouTube chat message analysis and block decisions."""
 
+import logging
+
 import dspy
+
+logger = logging.getLogger(__name__)
 
 
 # --- Signatures ---
@@ -120,10 +124,10 @@ def configure_dspy(settings: dict) -> None:
     _current_lm = _build_lm(settings)
     try:
         dspy.configure(lm=_current_lm)
-    except Exception:
+    except Exception as e:
         # Async context mismatch — the LM is stored in _current_lm
         # and DSPy tools can use dspy.context(lm=_current_lm) as needed
-        pass
+        logger.warning("dspy.configure() failed (will use context manager): %s", e)
 
 
 def get_dspy_lm():

@@ -1,11 +1,14 @@
 """User history tool for querying and storing message data in SQLite."""
 
 import json
+import logging
 import os
 import sqlite3
 import time
 
 from langchain_core.tools import tool
+
+logger = logging.getLogger(__name__)
 
 DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'chat_blocker.db')
 
@@ -93,5 +96,15 @@ def get_user_history(username: str, message: str) -> str:
             "first_seen": first_seen,
         }
         return json.dumps(result)
+    except sqlite3.Error as e:
+        logger.error("SQLite error querying history for '%s': %s", username, e)
+        return json.dumps({
+            "username": username,
+            "total_messages": 0,
+            "recent_messages": 0,
+            "flag_count": 0,
+            "first_seen": time.time(),
+            "error": str(e),
+        })
     finally:
         conn.close()

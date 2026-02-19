@@ -9,16 +9,51 @@
   const BATCH_MAX_SIZE = 15;
   const BLOCK_DELAY = 2000; // 2 seconds between blocks
   const MENU_HOVER_DELAY = 200;
-  const MENU_CLICK_DELAY = 500;
-  const CONFIRM_DELAY = 500;
+  const SWEEP_INTERVAL = 5000; // 5 seconds between sweeps
 
   // --- State ---
   const decisionCache = new Map(); // username -> { block: boolean, reason: string }
+  const blockedUsers = new Set(); // persistent blocked usernames
   let messageBatch = [];
   let batchTimer = null;
   let blockQueue = [];
   let isProcessingBlockQueue = false;
   let observer = null;
+  let sweepTimer = null;
+
+  // --- Persistent blocked users ---
+  function loadBlockedUsers() {
+    return new Promise((resolve) => {
+      chrome.storage.local.get("blockedUsers", (result) => {
+        if (!chrome.runtime.lastError) {
+          const stored = result.blockedUsers;
+          if (Array.isArray(stored)) {
+            for (const u of stored) blockedUsers.add(u);
+            if (stored.length > 0) {
+              console.log(
+                `[YT-Blocker] Loaded ${stored.length} blocked users from storage`
+              );
+            }
+          }
+        }
+        resolve();
+      });
+    });
+  }
+
+  function persistBlockedUsers() {
+    chrome.storage.local.set(
+      { blockedUsers: Array.from(blockedUsers) },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.warn(
+            "[YT-Blocker] Failed to persist blocked users:",
+            chrome.runtime.lastError.message
+          );
+        }
+      }
+    );
+  }
 
   // --- Utility ---
   function sleep(ms) {
@@ -55,7 +90,13 @@
 
   // --- Batch message handling ---
   function queueMessage(username, text, messageNode) {
-    // Check cache first
+    // Instant hide for known blocked users — no backend round-trip needed
+    if (blockedUsers.has(username)) {
+      hideMessage(messageNode, username);
+      return;
+    }
+
+    // Check decision cache
     const cached = decisionCache.get(username);
     if (cached) {
       if (cached.block) {
@@ -122,6 +163,10 @@
 
   // --- Block queue ---
   function enqueueBlock(username, reason, messageNode) {
+    // Track as blocked immediately and persist
+    blockedUsers.add(username);
+    persistBlockedUsers();
+
     blockQueue.push({ username, reason, messageNode });
     if (!isProcessingBlockQueue) {
       processBlockQueue();
@@ -169,9 +214,9 @@
       );
       await sleep(MENU_HOVER_DELAY);
 
-      // Step 2: Click the 3-dot menu button
+      // Step 2: Click the 3-dot menu button (broadened selectors)
       const menuButton = messageNode.querySelector(
-        "#menu-button, yt-icon-button#menu-button"
+        "#menu-button, yt-icon-button#menu-button, button[aria-label='Chat actions']"
       );
       if (!menuButton) {
         console.warn("[YT-Blocker] Menu button not found for", username);
@@ -179,13 +224,25 @@
       }
 
       menuButton.click();
-      await sleep(MENU_CLICK_DELAY);
 
-      // Step 3: Find "Block" option in the menu
-      const menuItems = document.querySelectorAll(
-        "yt-live-chat-menu-service-item-renderer"
-      );
+      // Step 3: Wait for menu to appear, then find "Block" option
       let blockItem = null;
+      try {
+        await waitForElement(
+          "yt-live-chat-menu-service-item-renderer, ytd-menu-service-item-renderer, tp-yt-paper-item",
+          3000
+        );
+      } catch {
+        console.warn("[YT-Blocker] Menu did not appear for", username);
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape" })
+        );
+        return false;
+      }
+
+      const menuItems = document.querySelectorAll(
+        "yt-live-chat-menu-service-item-renderer, ytd-menu-service-item-renderer, tp-yt-paper-item"
+      );
 
       for (const item of menuItems) {
         const text = item.textContent.trim().toLowerCase();
@@ -197,35 +254,41 @@
 
       if (!blockItem) {
         console.warn("[YT-Blocker] Block menu item not found for", username);
-        // Close menu by pressing Escape
-        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+        document.dispatchEvent(
+          new KeyboardEvent("keydown", { key: "Escape" })
+        );
         return false;
       }
 
       // Step 4: Click the Block option
       blockItem.click();
-      await sleep(CONFIRM_DELAY);
 
-      // Step 5: Click confirm button in the dialog
-      const confirmButton = document.querySelector(
-        'yt-button-renderer#confirm-button, [aria-label="Block"], #confirm-button button'
-      );
-      if (confirmButton) {
+      // Step 5: Wait for confirm dialog, then click confirm
+      const confirmSelectors = [
+        "yt-confirm-dialog-renderer #confirm-button button",
+        "tp-yt-paper-dialog #confirm-button button",
+        'yt-button-renderer#confirm-button',
+        '[aria-label="Block"]',
+        "#confirm-button button",
+      ].join(", ");
+
+      try {
+        const confirmButton = await waitForElement(confirmSelectors, 3000);
         confirmButton.click();
         await sleep(200);
         return true;
-      }
-
-      // Try alternative confirm selectors
-      const paperButtons = document.querySelectorAll(
-        "yt-button-renderer, paper-button"
-      );
-      for (const btn of paperButtons) {
-        const text = btn.textContent.trim().toLowerCase();
-        if (text === "block" || text === "confirm") {
-          btn.click();
-          await sleep(200);
-          return true;
+      } catch {
+        // Fallback: search for text-based confirm buttons
+        const paperButtons = document.querySelectorAll(
+          "yt-button-renderer, paper-button, tp-yt-paper-button"
+        );
+        for (const btn of paperButtons) {
+          const text = btn.textContent.trim().toLowerCase();
+          if (text === "block" || text === "confirm") {
+            btn.click();
+            await sleep(200);
+            return true;
+          }
         }
       }
 
@@ -238,13 +301,37 @@
   }
 
   function hideMessage(messageNode, username) {
+    // Skip if already hidden
+    if (messageNode.dataset.ytBlockerHidden) return;
+
     messageNode.style.display = "none";
+    messageNode.style.height = "0";
+    messageNode.style.overflow = "hidden";
+    messageNode.dataset.ytBlockerHidden = "true";
+
     console.log(`[YT-Blocker] Hid message from ${username} (fallback)`);
     chrome.runtime.sendMessage({
       type: "USER_BLOCKED",
       username,
       reason: "hidden (native block failed)",
     });
+  }
+
+  // --- Sweep: catch messages from blocked users that slipped through ---
+  function sweepBlockedMessages(container) {
+    if (blockedUsers.size === 0) return;
+
+    const items = container.querySelectorAll(
+      "yt-live-chat-text-message-renderer:not([data-yt-blocker-hidden])"
+    );
+    for (const node of items) {
+      const authorEl = node.querySelector("#author-name");
+      if (!authorEl) continue;
+      const username = authorEl.textContent.trim();
+      if (blockedUsers.has(username)) {
+        hideMessage(node, username);
+      }
+    }
   }
 
   // --- Chat observer ---
@@ -264,20 +351,35 @@
           const username = authorEl.textContent.trim();
           const text = messageEl.textContent.trim();
 
-          if (username && text) {
-            queueMessage(username, text, node);
+          if (!username || !text) continue;
+
+          // Instant hide for known blocked users — no queueing
+          if (blockedUsers.has(username)) {
+            hideMessage(node, username);
+            continue;
           }
+
+          queueMessage(username, text, node);
         }
       }
     });
 
     observer.observe(itemsContainer, { childList: true });
     console.log("[YT-Blocker] Chat observer started.");
+
+    // Periodic sweep to catch messages from blocked users that slipped through re-renders
+    sweepTimer = setInterval(
+      () => sweepBlockedMessages(itemsContainer),
+      SWEEP_INTERVAL
+    );
   }
 
   // --- Initialize ---
   async function init() {
     console.log("[YT-Blocker] Content script loaded in live chat iframe.");
+
+    // Load persisted blocked users before starting observer
+    await loadBlockedUsers();
 
     try {
       const itemsContainer = await waitForElement(

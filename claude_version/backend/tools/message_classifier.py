@@ -1,12 +1,15 @@
 """Message classification tool using DSPy modules."""
 
 import json
+import logging
 from contextlib import nullcontext
 
 import dspy
 from langchain_core.tools import tool
 
 from dspy_modules import MessageClassifier, SentimentScorer, get_dspy_lm
+
+logger = logging.getLogger(__name__)
 
 
 @tool
@@ -28,6 +31,8 @@ def classify_message(message: str, criteria: str, username: str = "unknown") -> 
     scorer = SentimentScorer()
 
     lm = get_dspy_lm()
+    if not lm:
+        logger.warning("DSPy LM is None — classify_message will use default context for '%s'", username)
     ctx = dspy.context(lm=lm) if lm else nullcontext()
     with ctx:
         classification = classifier(message=message, username=username, criteria=criteria)

@@ -31,7 +31,10 @@ from models import (
     StatsResponse,
 )
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
 logger = logging.getLogger(__name__)
 
 # Global state
@@ -152,6 +155,7 @@ async def analyze_messages(request: AnalyzeRequest):
                 for m in uncached_messages
             ]
     else:
+        logger.warning("Agent is None — allowing %d messages", len(uncached_messages))
         raw_decisions = [
             {"username": m["username"], "decision": "allow", "reason": "Agent not configured"}
             for m in uncached_messages
