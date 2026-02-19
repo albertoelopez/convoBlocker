@@ -104,10 +104,10 @@ async function filterDocument(settings) {
   for (const node of nodes) {
     if (node.getAttribute(BLOCK_ATTR) === "1") continue;
     if (node.getAttribute(SEEN_ATTR) === "1") continue;
-    node.setAttribute(SEEN_ATTR, "1");
 
     const text = compactText(node.innerText || node.textContent || "");
     if (!text) continue;
+    node.setAttribute(SEEN_ATTR, "1");
 
     // Cheap local fallback catches obvious content without API calls.
     if (matchesBlocked(text)) {
@@ -147,6 +147,8 @@ async function getSettings() {
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== "sync" || !changes.filterSettings) return;
     settings = changes.filterSettings.newValue;
+    document.querySelectorAll(`[${SEEN_ATTR}]`).forEach((node) => node.removeAttribute(SEEN_ATTR));
+    filterDocument(settings);
   });
 
   const observer = new MutationObserver((records) => {
