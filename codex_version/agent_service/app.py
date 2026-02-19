@@ -163,17 +163,37 @@ def _parse_agent_json(raw_text: str) -> dict:
 
 deep_agent = None
 dspy_predictor = None
+runtime_init_error = ""
 
-if FILTER_RUNTIME == "deepagents":
-    deep_agent = _build_deep_agent()
-elif FILTER_RUNTIME == "dspy":
-    dspy_predictor = _build_dspy_predictor()
-else:
-    raise RuntimeError("FILTER_RUNTIME must be one of: deepagents, dspy")
+
+def _initialize_runtime():
+    global deep_agent, dspy_predictor, runtime_init_error
+    deep_agent = None
+    dspy_predictor = None
+    runtime_init_error = ""
+
+    try:
+        if FILTER_RUNTIME == "deepagents":
+            deep_agent = _build_deep_agent()
+        elif FILTER_RUNTIME == "dspy":
+            dspy_predictor = _build_dspy_predictor()
+        else:
+            runtime_init_error = "FILTER_RUNTIME must be one of: deepagents, dspy"
+    except Exception as exc:  # pragma: no cover
+        runtime_init_error = str(exc)
+
+
+_initialize_runtime()
 
 
 @app.post("/filter", response_model=FilterResponse)
 async def filter_content(req: FilterRequest):
+    if runtime_init_error:
+        raise HTTPException(
+            status_code=503,
+            detail=f"Filter runtime is unavailable: {runtime_init_error}",
+        )
+
     preference_block = "\n".join(f"- {line}" for line in req.preferences) or "- (none provided)"
     final_system = req.system_prompt.strip() or "Use preferences strictly and prefer hiding low-value content."
 
@@ -242,5 +262,7 @@ async def health():
         "ok": True,
         "model": MODEL_NAME,
         "runtime": FILTER_RUNTIME,
+        "runtime_ready": not bool(runtime_init_error),
+        "runtime_error": runtime_init_error,
         "providers": ["openai", "gemini", "groq", "ollama"],
     }
